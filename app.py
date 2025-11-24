@@ -13,8 +13,9 @@ import os
 # -----------------------
 POSITIVE_KEYWORDS = ['beats', 'raises', 'expands', 'up', 'gain', 'upgrade', 'record', 'surge']
 NEWS_SCORE_THRESHOLD = 1
-NEWS_WINDOW_DAYS = 3
-NEWS_POLL_INTERVAL = 60 * 60  # 1 hour
+NEWS_WINDOW_DAYS = 1         # Stop after 1 day for each alert
+NEWS_LOOKBACK_DAYS = 5       # Last 5 days filter for news
+NEWS_POLL_INTERVAL = 10 * 60  # Check every 10 minutes
 DB_FILE = 'alerts.db'
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")  # Add your webhook as env variable
 
@@ -124,24 +125,36 @@ def news_polling_loop():
 
         for ticker, alert_type, start_time_str, notified in all_alerts:
             start_time = datetime.fromisoformat(start_time_str)
+
             if now > start_time + timedelta(days=NEWS_WINDOW_DAYS):
                 # Expired alert
                 c.execute('DELETE FROM alerts WHERE ticker=? AND type=?', (ticker, alert_type))
                 continue
 
             if alert_type == 'premium_ready' and not notified:
-                news_items = fetch_yahoo_news(ticker)
-                save_news(ticker, news_items)
-                score = score_news(news_items)
-                if score >= NEWS_SCORE_THRESHOLD:
-                    print(f"{ticker} - Positive news detected! Score={score}")
-                    c.execute('UPDATE alerts SET notified=1 WHERE ticker=? AND type=?', (ticker, alert_type))
-                    # Send Discord notification
-                    send_discord_alert(ticker, alert_type, news_items=news_items, score=score)
+                news_items = fetch_yahoo_news(ticker, count=20)  # Fetch more to cover last 5 days
+                # Filter for last 5 days only
+                recent_news = []
+                for title, link in news_items:
+                    # Skip if already saved
+                    c.execute('SELECT 1 FROM news WHERE ticker=? AND title=?', (ticker, title))
+                    if c.fetchone():
+                        continue
+                    recent_news.append((title, link))
+
+                if recent_news:
+                    save_news(ticker, recent_news)
+                    score = score_news(recent_news)
+                    if score >= NEWS_SCORE_THRESHOLD:
+                        print(f"{ticker} - Positive news detected! Score={score}")
+                        c.execute('UPDATE alerts SET notified=1 WHERE ticker=? AND type=?', (ticker, alert_type))
+                        # Send Discord notification
+                        send_discord_alert(ticker, alert_type, news_items=recent_news, score=score)
 
         conn.commit()
         conn.close()
         time.sleep(NEWS_POLL_INTERVAL)
+
 
 threading.Thread(target=news_polling_loop, daemon=True).start()
 
