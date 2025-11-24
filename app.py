@@ -10,19 +10,21 @@ import os
 
 # -----------------------
 # Config
-# -----------------------POSITIVE_KEYWORDS = [
+# -----------------------
+POSITIVE_KEYWORDS = [
     'beats', 'raises', 'expands', 'up', 'gain', 'upgrade', 'record', 'surge',
     'dividend', 'payout', 'increase', 'growth', 'exceeds', 'tops', 'improves',
     'profit', 'income', 'milestone', 'agreement', 'partnership', 'outperform',
     'revised up', 'guidance', 'strong', 'positive', 'surpass'
 ]
 
-NEWS_SCORE_THRESHOLD = 1
-NEWS_WINDOW_DAYS = 1         # Stop after 1 day for each alert
-NEWS_LOOKBACK_DAYS = 5       # Last 5 days filter for news
-NEWS_POLL_INTERVAL = 10 * 60  # Check every 10 minutes
+NEWS_SCORE_THRESHOLD = 1          # Minimum score to trigger Discord alert
+NEWS_WINDOW_DAYS = 1              # Stop checking each alert after 1 day
+NEWS_LOOKBACK_DAYS = 5            # Only consider news from the last 5 days
+NEWS_POLL_INTERVAL = 10 * 60      # Check news every 10 minutes (600 seconds)
+
 DB_FILE = 'alerts.db'
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")  # Add your webhook as env variable
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")  # Webhook stored in env
 
 # -----------------------
 # Flask setup
@@ -58,6 +60,7 @@ def init_db():
     conn.close()
 
 init_db()
+
 
 # -----------------------
 # Helper functions
