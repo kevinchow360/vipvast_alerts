@@ -10,8 +10,13 @@ import os
 
 # -----------------------
 # Config
-# -----------------------
-POSITIVE_KEYWORDS = ['beats', 'raises', 'expands', 'up', 'gain', 'upgrade', 'record', 'surge']
+# -----------------------POSITIVE_KEYWORDS = [
+    'beats', 'raises', 'expands', 'up', 'gain', 'upgrade', 'record', 'surge',
+    'dividend', 'payout', 'increase', 'growth', 'exceeds', 'tops', 'improves',
+    'profit', 'income', 'milestone', 'agreement', 'partnership', 'outperform',
+    'revised up', 'guidance', 'strong', 'positive', 'surpass'
+]
+
 NEWS_SCORE_THRESHOLD = 1
 NEWS_WINDOW_DAYS = 1         # Stop after 1 day for each alert
 NEWS_LOOKBACK_DAYS = 5       # Last 5 days filter for news
