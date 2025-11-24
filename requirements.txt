@@ -2,5 +2,6 @@ flask
 feedparser
 gunicorn
 Flask==2.3.2
-flask-cors==4.1.0
+flask-cors==6.0.0
 feedparser==6.0.10
+
