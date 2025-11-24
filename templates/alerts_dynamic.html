@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VIP VAST Premium Alerts</title>
+<style>
+body { font-family: Arial; background: #111; color: #fff; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+th { background: #222; }
+tr.early_watch { background: #555500; }
+tr.premium_ready { background: #005500; }
+a { color: #0f0; text-decoration: none; }
+.progress-container { width: 100px; background: #222; border-radius: 4px; height: 12px; overflow: hidden; }
+.progress-bar { height: 100%; background: #0f0; width: 0%; }
+</style>
+<script>
+async function fetchAlerts() {
+    const resp = await fetch('/api/alerts');
+    const data = await resp.json();
+    const tbody = document.getElementById('alerts-body');
+    tbody.innerHTML = '';
+
+    data.forEach(alert => {
+        const tr = document.createElement('tr');
+        tr.className = alert.type;
+
+        // Ticker
+        const tickerTd = document.createElement('td');
+        tickerTd.textContent = alert.ticker;
+        tr.appendChild(tickerTd);
+
+        // Type
+        const typeTd = document.createElement('td');
+        typeTd.textContent = alert.type.replace('_',' ').toUpperCase();
+        tr.appendChild(typeTd);
+
+        // Start Time
+        const startTd = document.createElement('td');
+        startTd.textContent = new Date(alert.start_time).toLocaleString();
+        tr.appendChild(startTd);
+
+        // News Score with progress bar
+        const scoreTd = document.createElement('td');
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'progress-container';
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        // Map score to width (max 10 points)
+        const widthPercent = Math.min(alert.score, 10) * 10;
+        progressBar.style.width = widthPercent + '%';
+        progressContainer.appendChild(progressBar);
+        scoreTd.appendChild(progressContainer);
+        tr.appendChild(scoreTd);
+
+        // News Headlines
+        const newsTd = document.createElement('td');
+        alert.news_items.forEach(n => {
+            const a = document.createElement('a');
+            a.href = n.link;
+            a.target = '_blank';
+            a.textContent = n.title;
+            newsTd.appendChild(a);
+            newsTd.appendChild(document.createElement('br'));
+        });
+        tr.appendChild(newsTd);
+
+        tbody.appendChild(tr);
+    });
+}
+
+// Auto-refresh every 60 seconds
+setInterval(fetchAlerts, 60000);
+window.onload = fetchAlerts;
+</script>
+</head>
+<body>
+<h1>VIP VAST Premium Alerts</h1>
+<table>
+<tr>
+    <th>Ticker</th>
+    <th>Type</th>
+    <th>Start Time</th>
+    <th>News Score</th>
+    <th>News Headlines</th>
+</tr>
+<tbody id="alerts-body"></tbody>
+</table>
+</body>
+</html>
