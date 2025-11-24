@@ -16,6 +16,7 @@ NEWS_SCORE_THRESHOLD = 1
 NEWS_WINDOW_DAYS = 3
 NEWS_POLL_INTERVAL = 60 * 60  # 1 hour
 DB_FILE = 'alerts.db'
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")  # Add your webhook as env variable
 
 # -----------------------
 # Flask setup
@@ -95,6 +96,22 @@ def save_news(ticker, news_items):
     conn.close()
 
 # -----------------------
+# Discord integration
+# -----------------------
+def send_discord_alert(ticker, alert_type, news_items=None, score=None):
+    if not DISCORD_WEBHOOK_URL:
+        return
+    content = f"**Alert:** {ticker} - {alert_type}\n"
+    if news_items:
+        content += f"Score: {score}\n"
+        for title, link in news_items:
+            content += f"- [{title}]({link})\n"
+    try:
+        requests.post(DISCORD_WEBHOOK_URL, json={"content": content})
+    except Exception as e:
+        print(f"Failed to send Discord message: {e}")
+
+# -----------------------
 # Background news polling
 # -----------------------
 def news_polling_loop():
@@ -119,6 +136,8 @@ def news_polling_loop():
                 if score >= NEWS_SCORE_THRESHOLD:
                     print(f"{ticker} - Positive news detected! Score={score}")
                     c.execute('UPDATE alerts SET notified=1 WHERE ticker=? AND type=?', (ticker, alert_type))
+                    # Send Discord notification
+                    send_discord_alert(ticker, alert_type, news_items=news_items, score=score)
 
         conn.commit()
         conn.close()
@@ -138,6 +157,8 @@ def tradingview_webhook():
     if alert_type == 'premium_ready':
         news_items = fetch_yahoo_news(ticker)
         save_news(ticker, news_items)
+        # Send Discord notification
+        send_discord_alert(ticker, alert_type, news_items=news_items, score=score_news(news_items))
     return jsonify({'status': 'success'}), 200
 
 # -----------------------
