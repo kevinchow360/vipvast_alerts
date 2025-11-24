@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: vipvast-backend
+    name: vipvast-alerts
     env: python
     plan: free
     region: virginia
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
-    pythonVersion: "3.11"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    autoDeploy: true
+    branch: main

@@ -1,17 +1,12 @@
-from flask import Flask, render_template, jsonify
-import feedparser
-from datetime import datetime, timedelta
+from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
 import sqlite3
 import threading
 import time
+from datetime import datetime, timedelta
+import requests
+import xml.etree.ElementTree as ET
 import os
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
-from flask_cors import CORS
-CORS(app)
 
 # -----------------------
 # Config
@@ -20,13 +15,13 @@ POSITIVE_KEYWORDS = ['beats', 'raises', 'expands', 'up', 'gain', 'upgrade', 'rec
 NEWS_SCORE_THRESHOLD = 1
 NEWS_WINDOW_DAYS = 3
 NEWS_POLL_INTERVAL = 60 * 60  # 1 hour
-
 DB_FILE = 'alerts.db'
 
 # -----------------------
-# Flask app
+# Flask setup
 # -----------------------
 app = Flask(__name__)
+CORS(app)
 
 # -----------------------
 # Database setup
@@ -61,10 +56,16 @@ init_db()
 # Helper functions
 # -----------------------
 def fetch_yahoo_news(ticker, count=5):
-    rss_url = f'https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US'
-    feed = feedparser.parse(rss_url)
-    news_items = [(entry.title, entry.link) for entry in feed.entries[:count]]
-    return news_items
+    """Fetch Yahoo Finance RSS news (Python 3.13 safe)."""
+    url = f'https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US'
+    r = requests.get(url)
+    root = ET.fromstring(r.content)
+    items = []
+    for item in root.findall('.//item')[:count]:
+        title = item.find('title').text
+        link = item.find('link').text
+        items.append((title, link))
+    return items
 
 def score_news(news_items):
     score = 0
@@ -128,13 +129,16 @@ threading.Thread(target=news_polling_loop, daemon=True).start()
 # -----------------------
 # TradingView webhook
 # -----------------------
-@app.route('/webhook/<ticker>/<alert_type>')
-def tradingview_webhook(ticker, alert_type):
+@app.route('/webhook', methods=['POST'])
+def tradingview_webhook():
+    data = request.json
+    ticker = data.get('ticker')
+    alert_type = data.get('type')
     save_alert(ticker, alert_type)
     if alert_type == 'premium_ready':
         news_items = fetch_yahoo_news(ticker)
         save_news(ticker, news_items)
-    return f"Alert received: {ticker} ({alert_type})"
+    return jsonify({'status': 'success'}), 200
 
 # -----------------------
 # API endpoint for frontend
@@ -145,8 +149,8 @@ def api_alerts():
     c = conn.cursor()
     c.execute('SELECT ticker, type, start_time, notified FROM alerts')
     alerts_list = c.fetchall()
-
     data = []
+
     for ticker, alert_type, start_time_str, notified in alerts_list:
         c.execute('SELECT title, link FROM news WHERE ticker=? ORDER BY timestamp DESC', (ticker,))
         news_items = c.fetchall()
@@ -162,7 +166,6 @@ def api_alerts():
     conn.close()
     return jsonify(data)
 
-
 # -----------------------
 # Frontend page
 # -----------------------
@@ -174,4 +177,6 @@ def index():
 # Run Flask
 # -----------------------
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
+
